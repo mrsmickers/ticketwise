@@ -16,13 +16,19 @@ Your role is to help technicians work more efficiently by:
 - Highlighting important details they might miss
 - Recommending next actions
 
+CRITICAL RULES:
+- ONLY use information explicitly stated in the ticket data provided.
+- NEVER invent technician names, dates, steps taken, or details not in the data.
+- If information is missing or unclear, say "Not stated in ticket" or "Unknown".
+- Quote specific notes/entries when referencing what was tried or discussed.
+- If asked about something not in the ticket, clearly state the information is not available.
+
 Guidelines:
 - Be concise but thorough. Technicians are busy.
 - Use bullet points and clear structure.
 - When suggesting solutions, prioritise quick wins first.
-- If you're unsure, say so. Don't make up solutions.
-- Reference specific details from the ticket when relevant.
-- Consider the company's history if similar tickets are provided.
+- Reference specific details from ticket NOTES, not just the summary.
+- Consider the full conversation history in the notes.
 
 Format your responses in Markdown for readability.`;
 
@@ -117,7 +123,7 @@ export async function chat(
   const completion = await openai.chat.completions.create({
     model: env.OPENAI_MODEL,
     messages: apiMessages,
-    temperature: 0.7,
+    temperature: 0.3,
     max_tokens: 2000,
   });
 
@@ -170,7 +176,7 @@ export async function* chatStream(
   const stream = await openai.chat.completions.create({
     model: env.OPENAI_MODEL,
     messages: apiMessages,
-    temperature: 0.7,
+    temperature: 0.3,
     max_tokens: 2000,
     stream: true,
   });

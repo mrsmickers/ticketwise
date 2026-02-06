@@ -37,14 +37,19 @@ export function Chat({ ticketId, isAuthenticated }: ChatProps) {
     getSlashCommands().then(setCommands);
   }, []);
 
-  // Auto-scroll to bottom
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
+  // Auto-scroll to bottom - only when new messages added, not on every render
+  const prevMessagesLength = useRef(messages.length);
+  
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    // Only scroll if messages were actually added
+    if (messages.length > prevMessagesLength.current) {
+      // Use requestAnimationFrame to avoid layout thrashing
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      });
+    }
+    prevMessagesLength.current = messages.length;
+  }, [messages.length]);
 
   // Show commands dropdown when typing /
   useEffect(() => {
