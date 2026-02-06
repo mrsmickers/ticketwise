@@ -216,13 +216,19 @@ export async function getConfigurationTickets(configId: number): Promise<CWTicke
   const searchTerms: string[] = [];
   
   // Config name is usually the device hostname - most useful
-  if (config.name && config.name.length > 2) {
-    searchTerms.push(config.name);
+  // Trim whitespace and skip generic/management config names
+  const configName = config.name?.trim();
+  const genericNames = ["intune", "management", "azure", "365", "office"];
+  const isGenericName = configName && genericNames.some(g => configName.toLowerCase().includes(g));
+  
+  if (configName && configName.length > 2 && !isGenericName) {
+    searchTerms.push(configName);
   }
   
   // Serial number if present
-  if (config.serialNumber && config.serialNumber.length > 3) {
-    searchTerms.push(config.serialNumber);
+  const serialNumber = config.serialNumber?.trim();
+  if (serialNumber && serialNumber.length > 3) {
+    searchTerms.push(serialNumber);
   }
   
   // If no searchable terms, we can't find related tickets

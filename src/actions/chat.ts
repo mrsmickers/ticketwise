@@ -155,7 +155,10 @@ export async function processChat(request: ChatRequest): Promise<ChatResponse> {
     if (ticketContext.configurations.length > 0) {
       try {
         const configTickets: CWTicket[] = [];
+        const configNames: string[] = [];
+        
         for (const config of ticketContext.configurations.slice(0, 3)) {
+          configNames.push(config.name || `Config #${config.id}`);
           try {
             const history = await getConfigTicketHistory(config.id);
             configTickets.push(...history.filter(t => t.id !== ticketId));
@@ -167,10 +170,14 @@ export async function processChat(request: ChatRequest): Promise<ChatResponse> {
         
         if (configTickets.length > 0) {
           chatOptions.configHistory = formatSimilarTickets(configTickets);
+        } else {
+          // Configs exist but no historical tickets found - tell AI
+          chatOptions.configHistory = `No historical tickets found mentioning these configurations: ${configNames.join(", ")}. This may be a new device or the configuration name doesn't typically appear in ticket summaries.`;
         }
       } catch (err) {
         console.error("Failed to fetch config history:", err);
-        // Continue without config history
+        // Continue without config history - AI will work with current ticket only
+        chatOptions.configHistory = "Unable to fetch configuration history due to an error.";
       }
     } else {
       // No configurations attached - let AI know
