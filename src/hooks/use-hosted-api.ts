@@ -100,8 +100,12 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
         // Log all messages from parent for debugging
         console.log("TicketWise: Received message:", JSON.stringify(data).slice(0, 500));
         
-        // Handle frame ID assignment
+        // Handle frame ID assignment (only process once)
         if (data.MessageFrameID) {
+          if (frameIdRef.current === data.MessageFrameID) {
+            console.log("TicketWise: Ignoring duplicate frameID");
+            return;
+          }
           console.log("TicketWise: Got frameID:", data.MessageFrameID);
           frameIdRef.current = data.MessageFrameID;
           setFrameId(data.MessageFrameID);
@@ -110,8 +114,9 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
           return;
         }
         
-        // Handle auth response
-        if (data.response === "getmemberauthentication" && data.data) {
+        // Handle auth response (CW sends lowercase response key)
+        const responseKey = data.response?.toLowerCase();
+        if (responseKey === "getmemberauthentication" && data.data) {
           console.log("TicketWise: Got auth response:", data.data);
           const parsed = MemberAuthSchema.safeParse(data.data);
           if (parsed.success) {
@@ -160,12 +165,16 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
             }
           }
           
-          // Acknowledge the event
-          window.parent.postMessage({
+          // Acknowledge the event (include frameID)
+          const ack = {
             event: data.event,
             _id: data._id,
             result: "success",
-          }, "*");
+            frameID: frameIdRef.current,
+          };
+          console.log("TicketWise: Acknowledging event:", ack);
+          window.parent.postMessage(ack, "*");
+          return;
         }
       } catch (e) {
         // Not a JSON message or not for us - ignore
