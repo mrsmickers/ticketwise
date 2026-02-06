@@ -149,7 +149,7 @@ export async function chat(
     model: env.OPENAI_MODEL,
     messages: apiMessages,
     temperature: 0.3,
-    max_tokens: 2000,
+    max_completion_tokens: 2000,
   });
 
   return completion.choices[0]?.message?.content || "I couldn't generate a response. Please try again.";
@@ -202,7 +202,7 @@ export async function* chatStream(
     model: env.OPENAI_MODEL,
     messages: apiMessages,
     temperature: 0.3,
-    max_tokens: 2000,
+    max_completion_tokens: 2000,
     stream: true,
   });
 
