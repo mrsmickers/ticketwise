@@ -3,6 +3,14 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { z } from "zod";
 
+// Allowed origins for postMessage communication
+const ALLOWED_ORIGINS = [
+  "https://eu.myconnectwise.net",
+  "https://na.myconnectwise.net",
+  "https://au.myconnectwise.net",
+  "https://staging.connectwisedev.com",
+];
+
 // ============ Type Definitions ============
 
 const MemberAuthSchema = z.object({
@@ -55,6 +63,7 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
   
   // Use ref to avoid stale closure issues with frameId
   const frameIdRef = useRef<string | null>(null);
+  const parentOriginRef = useRef<string | null>(null);
   
   const { onReady, onAuth, onError } = options;
 
@@ -66,7 +75,9 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     
     // Use ref to get current frameId (avoids stale closure)
     const payload = { ...message, frameID: frameIdRef.current };
-    window.parent.postMessage(payload, "*");
+    // Send to verified parent origin, or "*" for initial ready message
+    const targetOrigin = parentOriginRef.current || "*";
+    window.parent.postMessage(payload, targetOrigin);
   }, []);
 
   // Request member authentication from CW
@@ -93,6 +104,16 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     if (messageListenerRef.current) return;
 
     const handleMessage = (event: MessageEvent) => {
+      // Validate origin - only accept messages from ConnectWise domains
+      if (!ALLOWED_ORIGINS.some(origin => event.origin.startsWith(origin))) {
+        return; // Silently ignore messages from unknown origins
+      }
+      
+      // Store the parent origin for secure postMessage responses
+      if (!parentOriginRef.current) {
+        parentOriginRef.current = event.origin;
+      }
+      
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
         
@@ -163,7 +184,7 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
             _id: data._id,
             result: "success",
             frameID: frameIdRef.current,
-          }, "*");
+          }, parentOriginRef.current || "*");
           return;
         }
       } catch (e) {

@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { chat, SLASH_COMMANDS, type ChatMessage } from "@/lib/ai";
 import {
   getTicketContext,
@@ -9,6 +10,29 @@ import {
 } from "./ticket";
 import { formatTicketForAI, formatSimilarTickets, formatSimilarTicketsWithNotes } from "@/lib/format";
 import type { CWTicket } from "@/lib/connectwise";
+
+// Simple in-memory rate limiter
+// In production, consider using Redis for distributed rate limiting
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT = 30; // requests per window
+const RATE_WINDOW = 60 * 1000; // 1 minute
+
+function checkRateLimit(identifier: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = rateLimitMap.get(identifier);
+  
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(identifier, { count: 1, resetTime: now + RATE_WINDOW });
+    return { allowed: true, remaining: RATE_LIMIT - 1 };
+  }
+  
+  if (entry.count >= RATE_LIMIT) {
+    return { allowed: false, remaining: 0 };
+  }
+  
+  entry.count++;
+  return { allowed: true, remaining: RATE_LIMIT - entry.count };
+}
 
 export interface ChatRequest {
   ticketId: number;
@@ -41,6 +65,18 @@ function detectSlashCommand(message: string): { command: string | null; content:
  * Process a chat message and return AI response.
  */
 export async function processChat(request: ChatRequest): Promise<ChatResponse> {
+  // Rate limiting based on member ID
+  const cookieStore = await cookies();
+  const memberId = cookieStore.get("memberId")?.value || "anonymous";
+  const { allowed, remaining } = checkRateLimit(memberId);
+  
+  if (!allowed) {
+    return {
+      message: "Rate limit exceeded. Please wait a moment before sending more messages.",
+      slashCommand: undefined,
+    };
+  }
+  
   const { ticketId, messages, userMessage } = request;
   
   // Detect slash command
