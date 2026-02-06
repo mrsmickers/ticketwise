@@ -205,53 +205,66 @@ export async function getConfiguration(configId: number): Promise<CWConfiguratio
   return cwGet<CWConfiguration>(`/company/configurations/${configId}`);
 }
 
-export async function getConfigurationTickets(configId: number): Promise<CWTicket[]> {
-  // CW API doesn't support querying tickets by configuration ID directly.
-  // Workaround: get company tickets, then check which have this config attached.
+// Report API response structure
+interface ServiceReportResponse {
+  column_definitions: Array<Record<string, { type: string; isNullable: boolean; identityColumn: boolean }>>;
+  row_values: Array<Array<string | number | boolean | null>>;
+}
+
+export async function getConfigurationTickets(configId: number, limit: number = 30): Promise<CWTicket[]> {
+  // Use the Service Report API to query tickets by config_recids
+  // This is MUCH more efficient than checking each ticket individually
   
-  // First get the configuration to find its company
-  const config = await getConfiguration(configId);
-  const companyId = config.company?.id;
+  const reportUrl = buildUrl("/system/reports/Service");
+  const url = new URL(reportUrl);
   
-  if (!companyId) {
-    return []; // Can't search without company
+  // Select columns we need - config_recids contains comma-separated config IDs
+  url.searchParams.set("columns", "TicketNbr,Summary,date_entered,Closed_Flag,status_description,config_recids");
+  // Query for tickets containing this config ID
+  url.searchParams.set("conditions", `config_recids like '%${configId}%'`);
+  url.searchParams.set("orderBy", "TicketNbr desc");
+  url.searchParams.set("pageSize", String(limit));
+  
+  const headers = await getHeaders();
+  const response = await fetch(url.toString(), { headers, cache: "no-store" });
+  
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`ConnectWise Report API error (${response.status}): ${error}`);
   }
   
-  // Get recent tickets for this company (last 6 months)
-  const dateThreshold = new Date();
-  dateThreshold.setDate(dateThreshold.getDate() - 180);
-  const dateStr = dateThreshold.toISOString().split("T")[0];
+  const report: ServiceReportResponse = await response.json();
   
-  const companyTickets = await searchTickets(
-    `company/id=${companyId}`,
-    {
-      orderBy: "id desc", // Use ID desc to get more recent tickets
-      pageSize: 200, // Get more tickets to find matches
-      fields: ["id", "summary", "status", "company", "dateEntered", "type", "initialDescription", "initialResolution"],
-    }
-  );
+  // Map column names to indices
+  const colNames = report.column_definitions.map(def => Object.keys(def)[0]);
+  const getColIndex = (name: string) => colNames.indexOf(name);
   
-  // Filter to tickets that have this configuration attached
-  // CW API doesn't support filtering by configId, so we check each ticket
-  const matchingTickets: CWTicket[] = [];
-  
-  // Check tickets until we find enough matches or hit limit
-  // Higher limit since configs may be spread across many tickets
-  for (const ticket of companyTickets.slice(0, 100)) {
-    try {
-      const ticketConfigs = await getTicketConfigurations(ticket.id);
-      if (ticketConfigs.some(c => c.id === configId)) {
-        matchingTickets.push(ticket);
-      }
-    } catch {
-      // Skip tickets we can't fetch configs for
-    }
+  // Convert report rows to ticket objects
+  // Report returns: TicketNbr, Summary, date_entered, Closed_Flag, status_description, config_recids
+  const tickets: CWTicket[] = report.row_values.map(row => {
+    const ticketId = row[getColIndex("TicketNbr")] as number;
+    const summary = row[getColIndex("Summary")] as string;
+    const dateEntered = row[getColIndex("date_entered")] as string;
+    const closedFlag = row[getColIndex("Closed_Flag")] as boolean;
+    const statusName = row[getColIndex("status_description")] as string;
     
-    // Stop once we have enough matching tickets
-    if (matchingTickets.length >= 20) break;
-  }
+    return {
+      id: ticketId,
+      summary: summary || "",
+      dateEntered,
+      status: statusName ? { id: 0, name: closedFlag ? `${statusName} (Closed)` : statusName } : undefined,
+    };
+  });
   
-  return matchingTickets;
+  // Sort to put closed/resolved tickets first (they have solutions!)
+  const closedStatuses = ["closed", "resolved", "completed"];
+  return tickets.sort((a, b) => {
+    const aIsClosed = closedStatuses.some(s => a.status?.name?.toLowerCase().includes(s));
+    const bIsClosed = closedStatuses.some(s => b.status?.name?.toLowerCase().includes(s));
+    if (aIsClosed && !bIsClosed) return -1;
+    if (!aIsClosed && bIsClosed) return 1;
+    return 0;
+  });
 }
 
 // Common words to exclude from keyword matching
