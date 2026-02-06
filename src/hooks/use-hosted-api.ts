@@ -39,8 +39,10 @@ interface UseHostedApiReturn {
   isReady: boolean;
   isAuthenticated: boolean;
   auth: MemberAuth | null;
+  screenObject: ScreenObject | null;
   frameId: string | null;
   requestAuth: () => void;
+  requestScreenObject: () => void;
   refreshScreen: () => void;
 }
 
@@ -48,6 +50,7 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
   const [isReady, setIsReady] = useState(false);
   const [frameId, setFrameId] = useState<string | null>(null);
   const [auth, setAuth] = useState<MemberAuth | null>(null);
+  const [screenObject, setScreenObject] = useState<ScreenObject | null>(null);
   const messageListenerRef = useRef<((e: MessageEvent) => void) | null>(null);
   
   const { onReady, onAuth, onError } = options;
@@ -71,6 +74,18 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     if (typeof window !== "undefined" && window !== window.parent) {
       window.parent.postMessage(
         JSON.stringify({ hosted_request: "getMemberAuthentication" }),
+        "*"
+      );
+    }
+  }, [postToParent]);
+
+  // Request screen object (record ID, screen type)
+  const requestScreenObject = useCallback(() => {
+    postToParent({ hosted_request: "getScreenObject" });
+    
+    if (typeof window !== "undefined" && window !== window.parent) {
+      window.parent.postMessage(
+        JSON.stringify({ hosted_request: "getScreenObject" }),
         "*"
       );
     }
@@ -113,6 +128,26 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
           return;
         }
         
+        // Handle screen object response
+        if (data.response === "getscreenobject" && data.data) {
+          console.log("TicketWise: Screen object received", data.data);
+          const parsed = ScreenObjectSchema.safeParse(data.data);
+          if (parsed.success) {
+            setScreenObject(parsed.data);
+          } else {
+            console.error("TicketWise: Invalid screen object", parsed.error, data.data);
+            // Try to extract manually if schema doesn't match exactly
+            if (data.data.id || data.data.recordId) {
+              setScreenObject({
+                id: data.data.id || data.data.recordId,
+                screen: data.data.screen || "ticket",
+                hostedAs: data.data.hostedAs || "pod",
+              } as ScreenObject);
+            }
+          }
+          return;
+        }
+        
         // Handle events (onLoad, beforeSave)
         if (data.event) {
           console.log("TicketWise: Event received", data.event);
@@ -151,8 +186,10 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     isReady,
     isAuthenticated: auth !== null,
     auth,
+    screenObject,
     frameId,
     requestAuth,
+    requestScreenObject,
     refreshScreen,
   };
 }
