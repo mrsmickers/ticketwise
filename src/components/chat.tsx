@@ -30,7 +30,6 @@ export function Chat({ ticketId, isAuthenticated }: ChatProps) {
   const [error, setError] = useState<string | null>(null);
   const [commands, setCommands] = useState<SlashCommand[]>([]);
   const [showCommands, setShowCommands] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Load slash commands (including client-side only commands)
@@ -46,13 +45,18 @@ export function Chat({ ticketId, isAuthenticated }: ChatProps) {
 
   // Auto-scroll to bottom - only when new messages added, not on every render
   const prevMessagesLength = useRef(messages.length);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     // Only scroll if messages were actually added
     if (messages.length > prevMessagesLength.current) {
       // Use requestAnimationFrame to avoid layout thrashing
       requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+        // Scroll the container directly instead of scrollIntoView
+        // (scrollIntoView can affect parent iframe scroll)
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
       });
     }
     prevMessagesLength.current = messages.length;
@@ -147,7 +151,7 @@ export function Chat({ ticketId, isAuthenticated }: ChatProps) {
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 && (
           <div className="text-center text-gray-400 text-sm py-8">
             <p className="font-medium mb-2">Welcome to TicketWise</p>
@@ -211,8 +215,6 @@ export function Chat({ ticketId, isAuthenticated }: ChatProps) {
             {error}
           </div>
         )}
-        
-        <div ref={messagesEndRef} />
       </div>
       
       {/* Input area */}
