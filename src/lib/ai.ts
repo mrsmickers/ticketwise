@@ -64,6 +64,30 @@ export const SLASH_COMMANDS: Record<string, { description: string; prompt: strin
     description: "Prepare escalation notes",
     prompt: "Prepare concise escalation notes for this ticket. Include: issue summary, what's been tried, current findings, and specific questions for the escalation team.",
   },
+  "/5whys": {
+    description: "Root cause analysis (5 Whys)",
+    prompt: `Perform a 5 Whys root cause analysis on this ticket to identify the underlying cause of the issue.
+
+Structure your analysis as follows:
+
+**Problem Statement:** Clearly state the problem from the ticket.
+
+**The 5 Whys:**
+1. **Why did [problem] occur?** → [Answer based on ticket evidence]
+2. **Why did [answer 1] happen?** → [Answer based on ticket evidence or logical inference]
+3. **Why did [answer 2] happen?** → [Continue drilling down]
+4. **Why did [answer 3] happen?** → [Continue drilling down]
+5. **Why did [answer 4] happen?** → [Root cause identified]
+
+**Root Cause:** State the identified root cause clearly.
+
+**Recommendations:** Based on this analysis, suggest:
+- Immediate fix for this ticket
+- Preventive measures to stop recurrence
+- Any process/training improvements
+
+IMPORTANT: Only use information from the ticket. Where you must infer or make assumptions, clearly state "Possible cause (not confirmed):" and explain your reasoning. If there isn't enough information to complete all 5 levels, stop where the evidence ends and note what additional investigation is needed.`,
+  },
 };
 
 // ============ Chat Functions ============

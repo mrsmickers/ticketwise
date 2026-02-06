@@ -33,9 +33,15 @@ export function Chat({ ticketId, isAuthenticated }: ChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load slash commands
+  // Load slash commands (including client-side only commands)
   useEffect(() => {
-    getSlashCommands().then(setCommands);
+    getSlashCommands().then(serverCommands => {
+      // Add client-side only commands
+      const clientCommands = [
+        { command: "/refresh", description: "Clear chat and start fresh" },
+      ];
+      setCommands([...clientCommands, ...serverCommands]);
+    });
   }, []);
 
   // Auto-scroll to bottom - only when new messages added, not on every render
@@ -62,10 +68,21 @@ export function Chat({ ticketId, isAuthenticated }: ChatProps) {
     
     if (!input.trim() || isLoading || !isAuthenticated) return;
     
-    const userMessage = input.trim();
+    let userMessage = input.trim();
     setInput("");
     setError(null);
     setShowCommands(false);
+    
+    // Handle /refresh locally - clear chat without server call
+    if (userMessage.toLowerCase() === "/refresh") {
+      setMessages([]);
+      return;
+    }
+    
+    // Normalise "/5 whys" to "/5whys"
+    if (userMessage.toLowerCase().startsWith("/5 whys")) {
+      userMessage = "/5whys" + userMessage.slice(7);
+    }
     
     // Add user message
     const userMsg: Message = {
