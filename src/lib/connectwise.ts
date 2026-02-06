@@ -85,6 +85,9 @@ export async function cwPost<T>(endpoint: string, body: unknown): Promise<T> {
 export interface CWTicket {
   id: number;
   summary: string;
+  initialDescription?: string;
+  initialInternalAnalysis?: string;
+  initialResolution?: string;
   board?: { id: number; name: string };
   status?: { id: number; name: string };
   priority?: { id: number; name: string };

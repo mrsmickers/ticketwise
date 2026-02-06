@@ -43,6 +43,17 @@ export function formatTicketForAI(context: TicketContext): string {
     }
   }
   
+  // Initial description from ticket (if present and not empty)
+  if (ticket.initialDescription?.trim()) {
+    text += `\n## Initial Description (Customer Submitted)\n`;
+    text += `${ticket.initialDescription}\n`;
+  }
+  
+  if (ticket.initialInternalAnalysis?.trim()) {
+    text += `\n## Initial Internal Analysis\n`;
+    text += `${ticket.initialInternalAnalysis}\n`;
+  }
+  
   // Notes/conversation
   if (notes.length > 0) {
     text += `\n## Ticket Notes (${notes.length})\n\n`;
