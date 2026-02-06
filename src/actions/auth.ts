@@ -51,20 +51,29 @@ export async function clearAuthCookies(): Promise<{ success: boolean }> {
 /**
  * Check if user is authenticated.
  */
-export async function checkAuth(): Promise<{ authenticated: boolean; memberId?: string; email?: string }> {
+export async function checkAuth(): Promise<{ authenticated: boolean; memberId?: string; email?: string; debug?: string }> {
   const cookieStore = await cookies();
+  
+  // Get all cookie names for debugging
+  const allCookies = cookieStore.getAll();
+  const cookieNames = allCookies.map(c => c.name).join(", ");
   
   const memberHash = cookieStore.get("memberHash");
   const memberId = cookieStore.get("memberId");
   const email = cookieStore.get("memberEmail");
+  
+  console.log("TicketWise checkAuth - cookies found:", cookieNames);
+  console.log("TicketWise checkAuth - memberHash:", memberHash?.value?.slice(0, 10) + "...");
+  console.log("TicketWise checkAuth - memberId:", memberId?.value);
   
   if (memberHash?.value && memberId?.value) {
     return {
       authenticated: true,
       memberId: memberId.value,
       email: email?.value,
+      debug: `Found cookies: ${cookieNames}`,
     };
   }
   
-  return { authenticated: false };
+  return { authenticated: false, debug: `Cookies found: ${cookieNames || "none"}` };
 }

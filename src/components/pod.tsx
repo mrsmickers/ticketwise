@@ -17,10 +17,13 @@ export function Pod({ ticketId: propTicketId, screen: propScreen }: PodProps) {
   
   // Check for existing auth cookies on mount (CW sets these automatically)
   useEffect(() => {
-    checkAuth().then(({ authenticated, memberId }) => {
-      if (authenticated) {
-        console.log("TicketWise: Already authenticated via cookies, memberId:", memberId);
+    checkAuth().then((result) => {
+      console.log("TicketWise: checkAuth result:", result);
+      if (result.authenticated) {
+        console.log("TicketWise: Already authenticated via cookies, memberId:", result.memberId);
         setIsAuthenticated(true);
+      } else {
+        console.log("TicketWise: No existing auth cookies found. Debug:", result.debug);
       }
     });
   }, []);
