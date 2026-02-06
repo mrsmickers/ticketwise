@@ -159,7 +159,8 @@ export async function getTicket(ticketId: number): Promise<CWTicket> {
 }
 
 export async function getTicketNotes(ticketId: number): Promise<CWTicketNote[]> {
-  return cwGet<CWTicketNote[]>(`/service/tickets/${ticketId}/notes`, {
+  // Use allNotes endpoint to get all note types (description, internal, resolution, etc.)
+  return cwGet<CWTicketNote[]>(`/service/tickets/${ticketId}/allNotes`, {
     orderBy: "dateCreated asc",
     pageSize: 100,
   });
