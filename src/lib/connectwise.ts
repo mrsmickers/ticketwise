@@ -163,9 +163,16 @@ export async function getTicket(ticketId: number): Promise<CWTicket> {
 
 export async function getTicketNotes(ticketId: number): Promise<CWTicketNote[]> {
   // Use allNotes endpoint to get all note types (description, internal, resolution, etc.)
-  return cwGet<CWTicketNote[]>(`/service/tickets/${ticketId}/allNotes`, {
-    orderBy: "dateCreated asc",
+  // Note: allNotes doesn't support orderBy, so we sort client-side
+  const notes = await cwGet<CWTicketNote[]>(`/service/tickets/${ticketId}/allNotes`, {
     pageSize: 100,
+  });
+  
+  // Sort by dateCreated ascending
+  return notes.sort((a, b) => {
+    const dateA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0;
+    const dateB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0;
+    return dateA - dateB;
   });
 }
 
