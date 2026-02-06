@@ -90,7 +90,19 @@ RULES:
   },
   "/config": {
     description: "Analyse configuration history",
-    prompt: "Analyse the ticket history for this configuration/device. Look for: recurring issues, patterns, previous solutions that worked, and any underlying problems that might need addressing.",
+    prompt: `Analyse the ticket history for the attached configuration/device.
+
+IF historical tickets are provided:
+- List recurring issues (brief)
+- Note any patterns
+- Highlight solutions that worked before
+- Flag underlying problems
+
+IF NO historical tickets found:
+Reply ONLY with: "No ticket history found for this configuration."
+Do NOT analyse the current ticket - that's what /summary is for.
+
+Keep response under 200 words.`,
   },
   "/draft": {
     description: "Draft a customer response",
