@@ -150,19 +150,44 @@ export function formatSimilarTicketsWithNotes(
     if (notes.length > 0) {
       text += `\n### Notes (${notes.length}):\n`;
       
-      // Show last few notes (most likely to contain resolution)
-      // and any marked as resolution
-      const relevantNotes = notes
-        .filter(n => n.text?.trim())
-        .slice(-6); // Last 6 notes
+      // Keywords that suggest a fix/resolution action
+      const fixKeywords = /\b(fixed|resolved|installed|updated|replaced|changed|configured|enabled|disabled|reset|reinstalled|upgraded|repaired|rebooted|restarted|cleared|removed|added|applied|ran|executed|set|turned|switched)\b/i;
+      
+      // Categorise notes
+      const allNotes = notes.filter(n => n.text?.trim());
+      const resolutionNotes = allNotes.filter(n => n.resolutionFlag);
+      const actionNotes = allNotes.filter(n => !n.resolutionFlag && fixKeywords.test(n.text || ""));
+      const lastNotes = allNotes.slice(-3);
+      const firstNotes = allNotes.slice(0, 2);
+      
+      // Combine: resolution flags + action notes + first/last for context
+      // Use a Set to avoid duplicates
+      const noteIds = new Set<number>();
+      const relevantNotes: CWTicketNote[] = [];
+      
+      // Priority order: resolution-flagged, then action keywords, then bookends
+      for (const note of [...resolutionNotes, ...actionNotes, ...firstNotes, ...lastNotes]) {
+        if (!noteIds.has(note.id) && relevantNotes.length < 10) {
+          noteIds.add(note.id);
+          relevantNotes.push(note);
+        }
+      }
+      
+      // Sort by date
+      relevantNotes.sort((a, b) => {
+        const dateA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0;
+        const dateB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0;
+        return dateA - dateB;
+      });
       
       for (const note of relevantNotes) {
         const noteType = note.resolutionFlag ? "**RESOLUTION**" :
+                         fixKeywords.test(note.text || "") ? "**ACTION**" :
                          note.internalAnalysisFlag ? "Internal" : "Note";
         const author = note.member?.name || note.createdBy || "Tech";
         // Truncate long notes
-        const noteText = (note.text || "").trim().slice(0, 400);
-        text += `- [${noteType}] ${author}: ${noteText}${(note.text?.length || 0) > 400 ? "..." : ""}\n`;
+        const noteText = (note.text || "").trim().slice(0, 500);
+        text += `- [${noteType}] ${author}: ${noteText}${(note.text?.length || 0) > 500 ? "..." : ""}\n`;
       }
     }
     
