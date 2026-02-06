@@ -38,7 +38,20 @@ Format your responses in Markdown for readability.`;
 export const SLASH_COMMANDS: Record<string, { description: string; prompt: string }> = {
   "/summary": {
     description: "Summarise this ticket",
-    prompt: "Provide a clear, concise summary of this ticket. Include: the core issue, what's been tried, current status, and any blockers.",
+    prompt: `Provide a clear, concise summary of this ticket.
+
+For CLOSED/RESOLVED tickets, use this format:
+**Issue:** [One-line description of the problem]
+**Resolution:** [THE SPECIFIC ACTION that fixed it - dig through the notes to find exactly what worked]
+**Details:** [Brief context if needed]
+
+For OPEN tickets, use this format:
+**Issue:** [One-line description of the problem]
+**Tried so far:** [Bullet list of steps taken]
+**Current status:** [Where things stand]
+**Blockers:** [What's preventing progress, if any]
+
+IMPORTANT: For closed tickets, the resolution is often buried in the notes, not marked as a "resolution". Look for phrases like "fixed it", "resolved", "that worked", "sorted", or the last technical action before the customer confirmed it was working.`,
   },
   "/suggest": {
     description: "Suggest troubleshooting steps",
