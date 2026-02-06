@@ -81,6 +81,7 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
 
   // Request screen object (record ID, screen type)
   const requestScreenObject = useCallback(() => {
+    console.log("TicketWise: Requesting screen object");
     postToParent({ hosted_request: "getScreenObject" });
     
     if (typeof window !== "undefined" && window !== window.parent) {
@@ -106,6 +107,9 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     const handleMessage = (event: MessageEvent) => {
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        
+        // Debug: log all messages from parent
+        console.log("TicketWise: Message received", data);
         
         // Handle frame ID assignment
         if (data.MessageFrameID) {

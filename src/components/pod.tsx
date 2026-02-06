@@ -104,6 +104,9 @@ export function Pod({ ticketId: propTicketId, screen: propScreen }: PodProps) {
              !isAuthenticated ? "Authenticating..." : 
              "Loading ticket..."}
           </p>
+          <p className="text-xs text-gray-400 mt-2 font-mono">
+            ready: {String(isReady)} | auth: {String(!!auth)} | screen: {JSON.stringify(screenObject)}
+          </p>
         </div>
       </div>
     );
