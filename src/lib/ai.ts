@@ -49,8 +49,31 @@ export const SLASH_COMMANDS: Record<string, { description: string; prompt: strin
     prompt: "What should the technician do next with this ticket? Consider: urgency, what's pending, who needs to be contacted, and any escalation needs.",
   },
   "/similar": {
-    description: "Analyse similar tickets for patterns",
-    prompt: "Analyse the similar tickets provided. Look for: common causes, successful resolutions, recurring patterns, and any relevant knowledge that could help resolve the current ticket.",
+    description: "Find similar resolved tickets",
+    prompt: `You are helping a technician find similar past tickets to avoid reinventing the wheel.
+
+TASK: Review the similar tickets provided and identify ONLY those that are genuinely relevant to the current issue.
+
+RESPONSE FORMAT:
+If you find relevant matches, respond with:
+
+**Similar Tickets Found:**
+- **#[ID]** - [Brief issue] → [How it was resolved]
+- **#[ID]** - [Brief issue] → [How it was resolved]
+
+**Recommendation:** [What the tech should try based on these]
+
+If this appears to be a TREND (same issue recurring), note: "⚠️ Trend detected - [details]"
+
+If NO tickets are genuinely similar, respond ONLY with:
+"No similar tickets found for this specific issue."
+
+RULES:
+- ONLY include tickets where the issue genuinely matches
+- Do NOT list tickets just because they share a keyword
+- Focus on CLOSED/RESOLVED tickets that show what worked
+- Be concise - ticket number, brief problem, brief solution
+- If configuration data suggests a known hardware issue (e.g. specific laptop model), mention it`,
   },
   "/config": {
     description: "Analyse configuration history",

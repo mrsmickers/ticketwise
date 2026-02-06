@@ -58,16 +58,16 @@ export async function processChat(request: ChatRequest): Promise<ChatResponse> {
   
   // Add additional context based on slash command
   if (command === "/similar") {
-    // Get similar tickets from same company first
+    // Get similar tickets from same company first (prioritise closed/resolved)
     const companyTickets = await findSimilarCompanyTickets(
       ticketId,
       ticketContext.ticket.summary,
       ticketContext.ticket.company?.id || 0
     );
     
-    // If not enough, search globally
+    // If not enough from company, search globally but only recent
     let globalTickets: CWTicket[] = [];
-    if (companyTickets.length < 5) {
+    if (companyTickets.length < 3) {
       globalTickets = await findSimilarGlobalTickets(
         ticketId,
         ticketContext.ticket.summary
@@ -75,9 +75,17 @@ export async function processChat(request: ChatRequest): Promise<ChatResponse> {
     }
     
     const allSimilar = [...companyTickets, ...globalTickets.slice(0, 5 - companyTickets.length)];
-    if (allSimilar.length > 0) {
-      chatOptions.similarTickets = formatSimilarTickets(allSimilar);
+    
+    // If no similar tickets found, short-circuit with a quick response
+    if (allSimilar.length === 0) {
+      return {
+        message: "No similar tickets found for this specific issue.",
+        slashCommand: command,
+      };
     }
+    
+    // Include description for better AI matching, format with resolution info
+    chatOptions.similarTickets = formatSimilarTickets(allSimilar, true);
   }
   
   if (command === "/config") {

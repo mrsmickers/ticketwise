@@ -213,6 +213,14 @@ export async function getConfigurationTickets(configId: number): Promise<CWTicke
   });
 }
 
+// Common words to exclude from keyword matching
+const STOP_WORDS = new Set([
+  "user", "issue", "problem", "help", "need", "please", "urgent", "asap",
+  "working", "work", "able", "unable", "cannot", "error", "having", "getting",
+  "need", "wants", "requested", "request", "support", "ticket", "client",
+  "customer", "company", "staff", "employee", "team", "office", "site",
+]);
+
 export async function searchSimilarTickets(
   summary: string,
   companyId?: number,
@@ -224,13 +232,18 @@ export async function searchSimilarTickets(
   dateThreshold.setDate(dateThreshold.getDate() - daysBack);
   const dateStr = dateThreshold.toISOString().split("T")[0];
   
-  // Extract key terms from summary (simplified - could use NLP)
+  // Extract meaningful keywords (filter stop words)
   const keywords = summary
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
     .split(/\s+/)
-    .filter(w => w.length > 3)
-    .slice(0, 5);
+    .filter(w => w.length > 3 && !STOP_WORDS.has(w))
+    .slice(0, 4);
+  
+  // If no meaningful keywords, don't search
+  if (keywords.length === 0) {
+    return [];
+  }
   
   let conditions = `dateEntered>=[${dateStr}]`;
   
@@ -243,13 +256,23 @@ export async function searchSimilarTickets(
   }
   
   // Add keyword search - CW uses 'like' for partial matches
-  if (keywords.length > 0) {
-    const keywordCondition = keywords.map(k => `summary like "%${k}%"`).join(" or ");
-    conditions += ` and (${keywordCondition})`;
-  }
+  const keywordCondition = keywords.map(k => `summary like "%${k}%"`).join(" or ");
+  conditions += ` and (${keywordCondition})`;
   
-  return searchTickets(conditions, {
+  // Fetch tickets - we'll sort to prioritise closed ones
+  const tickets = await searchTickets(conditions, {
     orderBy: "dateEntered desc",
     pageSize: 20,
+    fields: ["id", "summary", "status", "company", "dateEntered", "type", "initialDescription", "initialResolution"],
+  });
+  
+  // Sort to put closed/resolved tickets first (they have solutions!)
+  const closedStatuses = ["closed", "resolved", "completed"];
+  return tickets.sort((a, b) => {
+    const aIsClosed = closedStatuses.some(s => a.status?.name?.toLowerCase().includes(s));
+    const bIsClosed = closedStatuses.some(s => b.status?.name?.toLowerCase().includes(s));
+    if (aIsClosed && !bIsClosed) return -1;
+    if (!aIsClosed && bIsClosed) return 1;
+    return 0;
   });
 }

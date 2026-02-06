@@ -90,18 +90,31 @@ export function formatTicketForAI(context: TicketContext): string {
 }
 
 /**
- * Format similar tickets for AI context.
+ * Format similar tickets for AI context - includes resolution info.
  */
-export function formatSimilarTickets(tickets: CWTicket[]): string {
-  if (tickets.length === 0) return "";
+export function formatSimilarTickets(tickets: CWTicket[], includeDescription = false): string {
+  if (tickets.length === 0) return "No similar tickets found.";
   
   let text = "";
-  for (const ticket of tickets.slice(0, 10)) {
+  for (const ticket of tickets.slice(0, 8)) {
     text += `## Ticket #${ticket.id}: ${ticket.summary}\n`;
     text += `- Status: ${ticket.status?.name || "Unknown"}\n`;
     text += `- Company: ${ticket.company?.name || "Unknown"}\n`;
     text += `- Date: ${ticket.dateEntered || "Unknown"}\n`;
-    text += `- Type: ${ticket.type?.name || "Unknown"}\n\n`;
+    
+    // Include initial description if requested (for better matching)
+    if (includeDescription && ticket.initialDescription?.trim()) {
+      const desc = ticket.initialDescription.trim().slice(0, 300);
+      text += `- Description: ${desc}${ticket.initialDescription.length > 300 ? "..." : ""}\n`;
+    }
+    
+    // Include resolution if available - this is the gold!
+    if (ticket.initialResolution?.trim()) {
+      const resolution = ticket.initialResolution.trim().slice(0, 500);
+      text += `- **Resolution:** ${resolution}${ticket.initialResolution.length > 500 ? "..." : ""}\n`;
+    }
+    
+    text += `\n`;
   }
   return text;
 }
