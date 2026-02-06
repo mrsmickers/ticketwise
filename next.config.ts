@@ -10,10 +10,8 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          {
-            key: "X-Frame-Options",
-            value: "ALLOWALL",
-          },
+          // Explicitly unset X-Frame-Options (Next.js may add sameorigin by default)
+          // CSP frame-ancestors supersedes X-Frame-Options
           {
             key: "Content-Security-Policy",
             value: "frame-ancestors *",
@@ -22,6 +20,9 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  
+  // Disable Next.js default security headers that conflict with iframe embedding
+  poweredByHeader: false,
 };
 
 export default nextConfig;
