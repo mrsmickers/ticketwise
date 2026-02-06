@@ -24,8 +24,12 @@ export default async function Home({ searchParams }: PageProps) {
             Please open this pod from within a ConnectWise ticket.
           </p>
           <p className="text-xs text-gray-400 mt-4">
-            Expected URL format: ?id=[cw_id]&screen=[cw_screen]
+            Expected URL format: ?id=[cw_id]&amp;screen=[cw_screen]
           </p>
+          <div className="mt-4 p-2 bg-gray-100 rounded text-left text-xs text-gray-600 font-mono break-all">
+            <p><strong>Received params:</strong></p>
+            <pre>{JSON.stringify(params, null, 2)}</pre>
+          </div>
         </div>
       </div>
     );
