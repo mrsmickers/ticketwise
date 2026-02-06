@@ -6,8 +6,8 @@ import {
   findSimilarCompanyTickets,
   findSimilarGlobalTickets,
   getConfigTicketHistory,
-  formatTicketForAI,
 } from "./ticket";
+import { formatTicketForAI, formatSimilarTickets } from "@/lib/format";
 import type { CWTicket } from "@/lib/connectwise";
 
 export interface ChatRequest {
@@ -19,23 +19,6 @@ export interface ChatRequest {
 export interface ChatResponse {
   message: string;
   slashCommand?: string;
-}
-
-/**
- * Format similar tickets for AI context.
- */
-function formatSimilarTickets(tickets: CWTicket[]): string {
-  if (tickets.length === 0) return "";
-  
-  let text = "";
-  for (const ticket of tickets.slice(0, 10)) {
-    text += `## Ticket #${ticket.id}: ${ticket.summary}\n`;
-    text += `- Status: ${ticket.status?.name || "Unknown"}\n`;
-    text += `- Company: ${ticket.company?.name || "Unknown"}\n`;
-    text += `- Date: ${ticket.dateEntered || "Unknown"}\n`;
-    text += `- Type: ${ticket.type?.name || "Unknown"}\n\n`;
-  }
-  return text;
 }
 
 /**
