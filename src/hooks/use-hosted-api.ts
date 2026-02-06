@@ -63,7 +63,7 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     }
     
     const payload = { ...message, frameID: frameId };
-    console.log("TicketWise: Sending to parent", payload);
+    console.log("TicketWise: Sending to parent", JSON.stringify(payload));
     // Send as plain object - CW expects object, not JSON string
     window.parent.postMessage(payload, "*");
   }, [frameId]);
@@ -96,7 +96,7 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
         
         // Debug: log all messages from parent
-        console.log("TicketWise: Message received", data);
+        console.log("TicketWise: Message received", JSON.stringify(data));
         
         // Handle frame ID assignment
         if (data.MessageFrameID) {
