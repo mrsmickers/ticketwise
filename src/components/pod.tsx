@@ -161,7 +161,7 @@ export function Pod({ ticketId: propTicketId, screen: propScreen }: PodProps) {
 
   return (
     <div className="h-full">
-      <Chat ticketId={ticketId} isAuthenticated={isAuthenticated || true} />
+      <Chat ticketId={ticketId} isAuthenticated={isAuthenticated} />
     </div>
   );
 }
