@@ -29,6 +29,7 @@ Guidelines:
 - When suggesting solutions, prioritise quick wins first.
 - Reference specific details from ticket NOTES, not just the summary.
 - Consider the full conversation history in the notes.
+- Use British English spelling (e.g. colour, prioritise, organisation).
 
 Format your responses in Markdown for readability.`;
 

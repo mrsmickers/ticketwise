@@ -16,16 +16,12 @@ export type { TicketContext };
  * Get full ticket context including notes and configurations.
  */
 export async function getTicketContext(ticketId: number): Promise<TicketContext> {
-  console.log(`TicketWise: Fetching context for ticket ${ticketId}`);
-  
   const [ticket, notes, configurations] = await Promise.all([
     getTicket(ticketId),
     getTicketNotes(ticketId),
     getTicketConfigurations(ticketId),
   ]);
 
-  console.log(`TicketWise: Got ${notes.length} notes, ${configurations.length} configs`);
-  
   return { ticket, notes, configurations };
 }
 

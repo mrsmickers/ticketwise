@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { processChat, getSlashCommands } from "@/actions/chat";
 import type { ChatMessage } from "@/lib/ai";
+import ReactMarkdown from "react-markdown";
 
 interface ChatProps {
   ticketId: number;
@@ -129,7 +130,7 @@ export function Chat({ ticketId, isAuthenticated }: ChatProps) {
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
         {messages.length === 0 && (
           <div className="text-center text-gray-400 text-sm py-8">
             <p className="font-medium mb-2">Welcome to TicketWise</p>
@@ -165,8 +166,12 @@ export function Chat({ ticketId, isAuthenticated }: ChatProps) {
                   {msg.slashCommand}
                 </div>
               )}
-              <div className="text-sm whitespace-pre-wrap prose prose-sm max-w-none">
-                {msg.content}
+              <div className={`text-sm prose prose-sm max-w-none ${msg.role === "user" ? "prose-invert" : ""}`}>
+                {msg.role === "assistant" ? (
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                ) : (
+                  <span>{msg.content}</span>
+                )}
               </div>
             </div>
           </div>

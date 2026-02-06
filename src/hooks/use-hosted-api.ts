@@ -58,30 +58,27 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
   // Post message to parent ConnectWise window
   const postToParent = useCallback((message: object) => {
     if (typeof window === "undefined" || window === window.parent) {
-      console.warn("TicketWise: Not running in iframe");
       return;
     }
     
     const payload = { ...message, frameID: frameId };
-    console.log("TicketWise: Sending to parent", JSON.stringify(payload));
-    // Send as plain object - CW expects object, not JSON string
     window.parent.postMessage(payload, "*");
   }, [frameId]);
 
   // Request member authentication from CW
   const requestAuth = useCallback(() => {
-    postToParent({ hosted_request: "getMemberAuthentication" });
+    // Per CW docs: use "request" not "hosted_request"
+    postToParent({ request: "getMemberAuthentication" });
   }, [postToParent]);
 
   // Request screen object (record ID, screen type)
   const requestScreenObject = useCallback(() => {
-    console.log("TicketWise: Requesting screen object");
-    postToParent({ hosted_request: "getScreenObject" });
+    postToParent({ request: "getScreenObject" });
   }, [postToParent]);
 
   // Request screen refresh
   const refreshScreen = useCallback(() => {
-    postToParent({ hosted_request: "refreshScreen" });
+    postToParent({ request: "refreshScreen" });
   }, [postToParent]);
 
   // Set up message listener
@@ -94,9 +91,6 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     const handleMessage = (event: MessageEvent) => {
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        
-        // Debug: log all messages from parent
-        console.log("TicketWise: Message received", JSON.stringify(data));
         
         // Handle frame ID assignment
         if (data.MessageFrameID) {
@@ -121,12 +115,10 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
         
         // Handle screen object response
         if (data.response === "getscreenobject" && data.data) {
-          console.log("TicketWise: Screen object received", data.data);
           const parsed = ScreenObjectSchema.safeParse(data.data);
           if (parsed.success) {
             setScreenObject(parsed.data);
           } else {
-            console.error("TicketWise: Invalid screen object", parsed.error, data.data);
             // Try to extract manually if schema doesn't match exactly
             if (data.data.id || data.data.recordId) {
               setScreenObject({
@@ -141,11 +133,8 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
         
         // Handle events (onLoad, beforeSave)
         if (data.event) {
-          console.log("TicketWise: Event received", data.event, data.data);
-          
           // Extract screenObject from onLoad event
           if (data.event === "onLoad" && data.data?.screenObject) {
-            console.log("TicketWise: Got screen object from onLoad", data.data.screenObject);
             const parsed = ScreenObjectSchema.safeParse(data.data.screenObject);
             if (parsed.success) {
               setScreenObject(parsed.data);
@@ -176,7 +165,6 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
 
     // Send ready message to parent
     if (window !== window.parent) {
-      console.log("TicketWise: Sending ready message");
       window.parent.postMessage({ message: "ready" }, "*");
     }
 
