@@ -66,7 +66,6 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     
     // Use ref to get current frameId (avoids stale closure)
     const payload = { ...message, frameID: frameIdRef.current };
-    console.log("TicketWise: Sending to CW:", payload);
     window.parent.postMessage(payload, "*");
   }, []);
 
@@ -97,16 +96,11 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
         
-        // Log all messages from parent for debugging
-        console.log("TicketWise: Received message:", JSON.stringify(data).slice(0, 500));
-        
         // Handle frame ID assignment (only process once)
         if (data.MessageFrameID) {
           if (frameIdRef.current === data.MessageFrameID) {
-            console.log("TicketWise: Ignoring duplicate frameID");
-            return;
+            return; // Ignore duplicate
           }
-          console.log("TicketWise: Got frameID:", data.MessageFrameID);
           frameIdRef.current = data.MessageFrameID;
           setFrameId(data.MessageFrameID);
           setIsReady(true);
@@ -117,10 +111,8 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
         // Handle auth response (CW sends lowercase response key)
         const responseKey = data.response?.toLowerCase();
         if (responseKey === "getmemberauthentication" && data.data) {
-          console.log("TicketWise: Got auth response:", data.data);
           const parsed = MemberAuthSchema.safeParse(data.data);
           if (parsed.success) {
-            console.log("TicketWise: Auth parsed successfully");
             setAuth(parsed.data);
             onAuth?.(parsed.data);
           } else {
@@ -166,14 +158,12 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
           }
           
           // Acknowledge the event (include frameID)
-          const ack = {
+          window.parent.postMessage({
             event: data.event,
             _id: data._id,
             result: "success",
             frameID: frameIdRef.current,
-          };
-          console.log("TicketWise: Acknowledging event:", ack);
-          window.parent.postMessage(ack, "*");
+          }, "*");
           return;
         }
       } catch (e) {
