@@ -206,27 +206,44 @@ export async function getConfiguration(configId: number): Promise<CWConfiguratio
 }
 
 export async function getConfigurationTickets(configId: number): Promise<CWTicket[]> {
-  // Search tickets that have this configuration attached
-  // CW condition syntax for sub-resources can vary - try the common format
-  try {
-    return await searchTickets(`configurations/id=${configId}`, {
-      orderBy: "dateEntered desc",
-      pageSize: 50,
-    });
-  } catch (err) {
-    // If the sub-resource condition fails, try alternative syntax
-    console.error(`Config search failed with configurations/id, error:`, err);
-    try {
-      return await searchTickets(`configurationId=${configId}`, {
-        orderBy: "dateEntered desc",
-        pageSize: 50,
-      });
-    } catch (err2) {
-      // Both failed - return empty array
-      console.error(`Config search also failed with configurationId, error:`, err2);
-      return [];
-    }
+  // CW API doesn't support searching tickets by configuration ID directly.
+  // Instead: get the config details, then search tickets by config name/serial (like /similar does)
+  
+  // First get the configuration details
+  const config = await getConfiguration(configId);
+  
+  // Build search terms from config identifiers
+  const searchTerms: string[] = [];
+  
+  // Config name is usually the device hostname - most useful
+  if (config.name && config.name.length > 2) {
+    searchTerms.push(config.name);
   }
+  
+  // Serial number if present
+  if (config.serialNumber && config.serialNumber.length > 3) {
+    searchTerms.push(config.serialNumber);
+  }
+  
+  // If no searchable terms, we can't find related tickets
+  if (searchTerms.length === 0) {
+    return [];
+  }
+  
+  // Search for tickets mentioning any of these identifiers (same approach as /similar)
+  const dateThreshold = new Date();
+  dateThreshold.setDate(dateThreshold.getDate() - 180); // 6 months back
+  const dateStr = dateThreshold.toISOString().split("T")[0];
+  
+  // Build condition: tickets from last 6 months containing config name or serial
+  const keywordCondition = searchTerms.map(term => `summary like "%${term}%"`).join(" or ");
+  const conditions = `dateEntered>=[${dateStr}] and (${keywordCondition})`;
+  
+  return searchTickets(conditions, {
+    orderBy: "dateEntered desc",
+    pageSize: 30,
+    fields: ["id", "summary", "status", "company", "dateEntered", "type", "initialDescription", "initialResolution"],
+  });
 }
 
 // Common words to exclude from keyword matching
