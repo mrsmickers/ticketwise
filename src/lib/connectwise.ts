@@ -207,10 +207,26 @@ export async function getConfiguration(configId: number): Promise<CWConfiguratio
 
 export async function getConfigurationTickets(configId: number): Promise<CWTicket[]> {
   // Search tickets that have this configuration attached
-  return searchTickets(`configurations/id=${configId}`, {
-    orderBy: "dateEntered desc",
-    pageSize: 50,
-  });
+  // CW condition syntax for sub-resources can vary - try the common format
+  try {
+    return await searchTickets(`configurations/id=${configId}`, {
+      orderBy: "dateEntered desc",
+      pageSize: 50,
+    });
+  } catch (err) {
+    // If the sub-resource condition fails, try alternative syntax
+    console.error(`Config search failed with configurations/id, error:`, err);
+    try {
+      return await searchTickets(`configurationId=${configId}`, {
+        orderBy: "dateEntered desc",
+        pageSize: 50,
+      });
+    } catch (err2) {
+      // Both failed - return empty array
+      console.error(`Config search also failed with configurationId, error:`, err2);
+      return [];
+    }
+  }
 }
 
 // Common words to exclude from keyword matching

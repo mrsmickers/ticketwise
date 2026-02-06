@@ -94,64 +94,87 @@ export async function processChat(request: ChatRequest): Promise<ChatResponse> {
   
   // Add additional context based on slash command
   if (command === "/similar") {
-    // Get similar tickets from same company first (prioritise closed/resolved)
-    const companyTickets = await findSimilarCompanyTickets(
-      ticketId,
-      ticketContext.ticket.summary,
-      ticketContext.ticket.company?.id || 0
-    );
-    
-    // If not enough from company, search globally but only recent
-    let globalTickets: CWTicket[] = [];
-    if (companyTickets.length < 3) {
-      globalTickets = await findSimilarGlobalTickets(
+    try {
+      // Get similar tickets from same company first (prioritise closed/resolved)
+      const companyTickets = await findSimilarCompanyTickets(
         ticketId,
-        ticketContext.ticket.summary
+        ticketContext.ticket.summary,
+        ticketContext.ticket.company?.id || 0
       );
-    }
-    
-    const allSimilar = [...companyTickets, ...globalTickets.slice(0, 5 - companyTickets.length)];
-    
-    // If no similar tickets found, short-circuit with a quick response
-    if (allSimilar.length === 0) {
-      return {
-        message: "No similar tickets found for this specific issue.",
-        slashCommand: command,
-      };
-    }
-    
-    // For closed/resolved tickets, fetch their notes to find the actual resolution
-    // (resolution is often in notes, not the initialResolution field)
-    const ticketsWithNotes = await Promise.all(
-      allSimilar.slice(0, 5).map(async (ticket) => {
-        const isClosed = ["closed", "resolved", "completed"].some(
-          s => ticket.status?.name?.toLowerCase().includes(s)
+      
+      // If not enough from company, search globally but only recent
+      let globalTickets: CWTicket[] = [];
+      if (companyTickets.length < 3) {
+        globalTickets = await findSimilarGlobalTickets(
+          ticketId,
+          ticketContext.ticket.summary
         );
-        // Only fetch notes for closed tickets (they have solutions)
-        if (isClosed) {
-          const { getTicketNotes } = await import("@/lib/connectwise");
-          const notes = await getTicketNotes(ticket.id);
-          return { ticket, notes };
-        }
-        return { ticket, notes: [] };
-      })
-    );
-    
-    chatOptions.similarTickets = formatSimilarTicketsWithNotes(ticketsWithNotes);
+      }
+      
+      const allSimilar = [...companyTickets, ...globalTickets.slice(0, 5 - companyTickets.length)];
+      
+      // If no similar tickets found, short-circuit with a quick response
+      if (allSimilar.length === 0) {
+        return {
+          message: "No similar tickets found for this specific issue.",
+          slashCommand: command,
+        };
+      }
+      
+      // For closed/resolved tickets, fetch their notes to find the actual resolution
+      // (resolution is often in notes, not the initialResolution field)
+      const ticketsWithNotes = await Promise.all(
+        allSimilar.slice(0, 5).map(async (ticket) => {
+          try {
+            const isClosed = ["closed", "resolved", "completed"].some(
+              s => ticket.status?.name?.toLowerCase().includes(s)
+            );
+            // Only fetch notes for closed tickets (they have solutions)
+            if (isClosed) {
+              const { getTicketNotes } = await import("@/lib/connectwise");
+              const notes = await getTicketNotes(ticket.id);
+              return { ticket, notes };
+            }
+            return { ticket, notes: [] };
+          } catch (err) {
+            // If we can't fetch notes for this ticket, return without notes
+            return { ticket, notes: [] };
+          }
+        })
+      );
+      
+      chatOptions.similarTickets = formatSimilarTicketsWithNotes(ticketsWithNotes);
+    } catch (err) {
+      console.error("Failed to fetch similar tickets:", err);
+      // Continue without similar tickets - AI will respond based on current ticket only
+    }
   }
   
   if (command === "/config") {
     // Get config history if configurations are attached
     if (ticketContext.configurations.length > 0) {
-      const configTickets: CWTicket[] = [];
-      for (const config of ticketContext.configurations.slice(0, 3)) {
-        const history = await getConfigTicketHistory(config.id);
-        configTickets.push(...history.filter(t => t.id !== ticketId));
+      try {
+        const configTickets: CWTicket[] = [];
+        for (const config of ticketContext.configurations.slice(0, 3)) {
+          try {
+            const history = await getConfigTicketHistory(config.id);
+            configTickets.push(...history.filter(t => t.id !== ticketId));
+          } catch (err) {
+            // Skip this config if we can't fetch its history
+            console.error(`Failed to fetch history for config ${config.id}:`, err);
+          }
+        }
+        
+        if (configTickets.length > 0) {
+          chatOptions.configHistory = formatSimilarTickets(configTickets);
+        }
+      } catch (err) {
+        console.error("Failed to fetch config history:", err);
+        // Continue without config history
       }
-      
-      if (configTickets.length > 0) {
-        chatOptions.configHistory = formatSimilarTickets(configTickets);
-      }
+    } else {
+      // No configurations attached - let AI know
+      chatOptions.configHistory = "No configurations/devices are attached to this ticket.";
     }
   }
   
