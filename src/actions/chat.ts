@@ -7,7 +7,7 @@ import {
   findSimilarGlobalTickets,
   getConfigTicketHistory,
 } from "./ticket";
-import { formatTicketForAI, formatSimilarTickets } from "@/lib/format";
+import { formatTicketForAI, formatSimilarTickets, formatSimilarTicketsWithNotes } from "@/lib/format";
 import type { CWTicket } from "@/lib/connectwise";
 
 export interface ChatRequest {
@@ -84,8 +84,24 @@ export async function processChat(request: ChatRequest): Promise<ChatResponse> {
       };
     }
     
-    // Include description for better AI matching, format with resolution info
-    chatOptions.similarTickets = formatSimilarTickets(allSimilar, true);
+    // For closed/resolved tickets, fetch their notes to find the actual resolution
+    // (resolution is often in notes, not the initialResolution field)
+    const ticketsWithNotes = await Promise.all(
+      allSimilar.slice(0, 5).map(async (ticket) => {
+        const isClosed = ["closed", "resolved", "completed"].some(
+          s => ticket.status?.name?.toLowerCase().includes(s)
+        );
+        // Only fetch notes for closed tickets (they have solutions)
+        if (isClosed) {
+          const { getTicketNotes } = await import("@/lib/connectwise");
+          const notes = await getTicketNotes(ticket.id);
+          return { ticket, notes };
+        }
+        return { ticket, notes: [] };
+      })
+    );
+    
+    chatOptions.similarTickets = formatSimilarTicketsWithNotes(ticketsWithNotes);
   }
   
   if (command === "/config") {

@@ -118,3 +118,55 @@ export function formatSimilarTickets(tickets: CWTicket[], includeDescription = f
   }
   return text;
 }
+
+/**
+ * Format similar tickets WITH their notes for full context.
+ * Used when we need to find the actual resolution buried in notes.
+ */
+export function formatSimilarTicketsWithNotes(
+  ticketsWithNotes: Array<{ ticket: CWTicket; notes: CWTicketNote[] }>
+): string {
+  if (ticketsWithNotes.length === 0) return "No similar tickets found.";
+  
+  let text = "";
+  for (const { ticket, notes } of ticketsWithNotes) {
+    text += `## Ticket #${ticket.id}: ${ticket.summary}\n`;
+    text += `- Status: ${ticket.status?.name || "Unknown"}\n`;
+    text += `- Company: ${ticket.company?.name || "Unknown"}\n`;
+    text += `- Date: ${ticket.dateEntered || "Unknown"}\n`;
+    
+    // Include initial description
+    if (ticket.initialDescription?.trim()) {
+      const desc = ticket.initialDescription.trim().slice(0, 300);
+      text += `- Problem: ${desc}${ticket.initialDescription.length > 300 ? "..." : ""}\n`;
+    }
+    
+    // Include initialResolution if available
+    if (ticket.initialResolution?.trim()) {
+      text += `- **Resolution Field:** ${ticket.initialResolution.trim().slice(0, 500)}\n`;
+    }
+    
+    // Include notes - this is where the real resolution often lives
+    if (notes.length > 0) {
+      text += `\n### Notes (${notes.length}):\n`;
+      
+      // Show last few notes (most likely to contain resolution)
+      // and any marked as resolution
+      const relevantNotes = notes
+        .filter(n => n.text?.trim())
+        .slice(-6); // Last 6 notes
+      
+      for (const note of relevantNotes) {
+        const noteType = note.resolutionFlag ? "**RESOLUTION**" :
+                         note.internalAnalysisFlag ? "Internal" : "Note";
+        const author = note.member?.name || note.createdBy || "Tech";
+        // Truncate long notes
+        const noteText = (note.text || "").trim().slice(0, 400);
+        text += `- [${noteType}] ${author}: ${noteText}${(note.text?.length || 0) > 400 ? "..." : ""}\n`;
+      }
+    }
+    
+    text += `\n---\n\n`;
+  }
+  return text;
+}
