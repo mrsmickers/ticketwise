@@ -63,33 +63,20 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     }
     
     const payload = { ...message, frameID: frameId };
-    window.parent.postMessage(JSON.stringify(payload), "*");
+    console.log("TicketWise: Sending to parent", payload);
+    // Send as plain object - CW expects object, not JSON string
+    window.parent.postMessage(payload, "*");
   }, [frameId]);
 
   // Request member authentication from CW
   const requestAuth = useCallback(() => {
     postToParent({ hosted_request: "getMemberAuthentication" });
-    
-    // Also send without frameID for Nilear compatibility
-    if (typeof window !== "undefined" && window !== window.parent) {
-      window.parent.postMessage(
-        JSON.stringify({ hosted_request: "getMemberAuthentication" }),
-        "*"
-      );
-    }
   }, [postToParent]);
 
   // Request screen object (record ID, screen type)
   const requestScreenObject = useCallback(() => {
     console.log("TicketWise: Requesting screen object");
     postToParent({ hosted_request: "getScreenObject" });
-    
-    if (typeof window !== "undefined" && window !== window.parent) {
-      window.parent.postMessage(
-        JSON.stringify({ hosted_request: "getScreenObject" }),
-        "*"
-      );
-    }
   }, [postToParent]);
 
   // Request screen refresh
@@ -156,14 +143,11 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
         if (data.event) {
           console.log("TicketWise: Event received", data.event);
           // Acknowledge the event
-          window.parent.postMessage(
-            JSON.stringify({
-              event: data.event,
-              _id: data._id,
-              result: "success",
-            }),
-            "*"
-          );
+          window.parent.postMessage({
+            event: data.event,
+            _id: data._id,
+            result: "success",
+          }, "*");
         }
       } catch (e) {
         // Not a JSON message or not for us - ignore
@@ -175,7 +159,8 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
 
     // Send ready message to parent
     if (window !== window.parent) {
-      window.parent.postMessage(JSON.stringify({ message: "ready" }), "*");
+      console.log("TicketWise: Sending ready message");
+      window.parent.postMessage({ message: "ready" }, "*");
     }
 
     return () => {
