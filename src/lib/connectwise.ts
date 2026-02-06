@@ -206,50 +206,52 @@ export async function getConfiguration(configId: number): Promise<CWConfiguratio
 }
 
 export async function getConfigurationTickets(configId: number): Promise<CWTicket[]> {
-  // CW API doesn't support searching tickets by configuration ID directly.
-  // Instead: get the config details, then search tickets by config name/serial (like /similar does)
+  // CW API doesn't support querying tickets by configuration ID directly.
+  // Workaround: get company tickets, then check which have this config attached.
   
-  // First get the configuration details
+  // First get the configuration to find its company
   const config = await getConfiguration(configId);
+  const companyId = config.company?.id;
   
-  // Build search terms from config identifiers
-  const searchTerms: string[] = [];
-  
-  // Config name is usually the device hostname - most useful
-  // Trim whitespace and skip generic/management config names
-  const configName = config.name?.trim();
-  const genericNames = ["intune", "management", "azure", "365", "office"];
-  const isGenericName = configName && genericNames.some(g => configName.toLowerCase().includes(g));
-  
-  if (configName && configName.length > 2 && !isGenericName) {
-    searchTerms.push(configName);
+  if (!companyId) {
+    return []; // Can't search without company
   }
   
-  // Serial number if present
-  const serialNumber = config.serialNumber?.trim();
-  if (serialNumber && serialNumber.length > 3) {
-    searchTerms.push(serialNumber);
-  }
-  
-  // If no searchable terms, we can't find related tickets
-  if (searchTerms.length === 0) {
-    return [];
-  }
-  
-  // Search for tickets mentioning any of these identifiers (same approach as /similar)
+  // Get recent tickets for this company (last 6 months)
   const dateThreshold = new Date();
-  dateThreshold.setDate(dateThreshold.getDate() - 180); // 6 months back
+  dateThreshold.setDate(dateThreshold.getDate() - 180);
   const dateStr = dateThreshold.toISOString().split("T")[0];
   
-  // Build condition: tickets from last 6 months containing config name or serial
-  const keywordCondition = searchTerms.map(term => `summary like "%${term}%"`).join(" or ");
-  const conditions = `dateEntered>=[${dateStr}] and (${keywordCondition})`;
+  const companyTickets = await searchTickets(
+    `company/id=${companyId}`,
+    {
+      orderBy: "id desc", // Use ID desc to get more recent tickets
+      pageSize: 200, // Get more tickets to find matches
+      fields: ["id", "summary", "status", "company", "dateEntered", "type", "initialDescription", "initialResolution"],
+    }
+  );
   
-  return searchTickets(conditions, {
-    orderBy: "dateEntered desc",
-    pageSize: 30,
-    fields: ["id", "summary", "status", "company", "dateEntered", "type", "initialDescription", "initialResolution"],
-  });
+  // Filter to tickets that have this configuration attached
+  // CW API doesn't support filtering by configId, so we check each ticket
+  const matchingTickets: CWTicket[] = [];
+  
+  // Check tickets until we find enough matches or hit limit
+  // Higher limit since configs may be spread across many tickets
+  for (const ticket of companyTickets.slice(0, 100)) {
+    try {
+      const ticketConfigs = await getTicketConfigurations(ticket.id);
+      if (ticketConfigs.some(c => c.id === configId)) {
+        matchingTickets.push(ticket);
+      }
+    } catch {
+      // Skip tickets we can't fetch configs for
+    }
+    
+    // Stop once we have enough matching tickets
+    if (matchingTickets.length >= 20) break;
+  }
+  
+  return matchingTickets;
 }
 
 // Common words to exclude from keyword matching
