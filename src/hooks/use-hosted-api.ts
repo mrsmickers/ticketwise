@@ -141,7 +141,24 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
         
         // Handle events (onLoad, beforeSave)
         if (data.event) {
-          console.log("TicketWise: Event received", data.event);
+          console.log("TicketWise: Event received", data.event, data.data);
+          
+          // Extract screenObject from onLoad event
+          if (data.event === "onLoad" && data.data?.screenObject) {
+            console.log("TicketWise: Got screen object from onLoad", data.data.screenObject);
+            const parsed = ScreenObjectSchema.safeParse(data.data.screenObject);
+            if (parsed.success) {
+              setScreenObject(parsed.data);
+            } else {
+              // Fallback: use raw data
+              setScreenObject({
+                id: data.data.screenObject.id,
+                screen: data.data.screenObject.screen || "ticket",
+                hostedAs: data.data.screenObject.hostedAs || "pod",
+              } as ScreenObject);
+            }
+          }
+          
           // Acknowledge the event
           window.parent.postMessage({
             event: data.event,

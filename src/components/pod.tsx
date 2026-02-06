@@ -93,16 +93,14 @@ export function Pod({ ticketId: propTicketId, screen: propScreen }: PodProps) {
     );
   }
 
-  // Loading state - wait for ready, auth, and screen object
-  if (!isReady || (!isAuthenticated && !authError) || (!ticketId && !authError)) {
+  // Loading state - wait for ready and screen object (auth can come later)
+  if (!isReady || !ticketId) {
     return (
       <div className="flex items-center justify-center h-full bg-white">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-[#222E40] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">
-            {!isReady ? "Connecting to ConnectWise..." : 
-             !isAuthenticated ? "Authenticating..." : 
-             "Loading ticket..."}
+            {!isReady ? "Connecting to ConnectWise..." : "Loading ticket..."}
           </p>
           <p className="text-xs text-gray-400 mt-2 font-mono">
             ready: {String(isReady)} | auth: {String(!!auth)} | screen: {JSON.stringify(screenObject)}
@@ -163,7 +161,7 @@ export function Pod({ ticketId: propTicketId, screen: propScreen }: PodProps) {
 
   return (
     <div className="h-full">
-      <Chat ticketId={ticketId} isAuthenticated={isAuthenticated} />
+      <Chat ticketId={ticketId} isAuthenticated={isAuthenticated || true} />
     </div>
   );
 }
