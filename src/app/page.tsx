@@ -1,4 +1,5 @@
 import { Pod } from "@/components/pod";
+import { DebugUrl } from "@/components/debug-url";
 
 interface PageProps {
   searchParams: Promise<{ id?: string; screen?: string }>;
@@ -29,6 +30,7 @@ export default async function Home({ searchParams }: PageProps) {
           <div className="mt-4 p-2 bg-gray-100 rounded text-left text-xs text-gray-600 font-mono break-all">
             <p><strong>Received params:</strong></p>
             <pre>{JSON.stringify(params, null, 2)}</pre>
+            <DebugUrl />
           </div>
         </div>
       </div>
