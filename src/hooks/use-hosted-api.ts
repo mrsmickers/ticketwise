@@ -53,6 +53,9 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
   const [screenObject, setScreenObject] = useState<ScreenObject | null>(null);
   const messageListenerRef = useRef<((e: MessageEvent) => void) | null>(null);
   
+  // Use ref to avoid stale closure issues with frameId
+  const frameIdRef = useRef<string | null>(null);
+  
   const { onReady, onAuth, onError } = options;
 
   // Post message to parent ConnectWise window
@@ -61,9 +64,11 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
       return;
     }
     
-    const payload = { ...message, frameID: frameId };
+    // Use ref to get current frameId (avoids stale closure)
+    const payload = { ...message, frameID: frameIdRef.current };
+    console.log("TicketWise: Sending to CW:", payload);
     window.parent.postMessage(payload, "*");
-  }, [frameId]);
+  }, []);
 
   // Request member authentication from CW
   const requestAuth = useCallback(() => {
@@ -92,8 +97,13 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
         
+        // Log all messages from parent for debugging
+        console.log("TicketWise: Received message:", JSON.stringify(data).slice(0, 500));
+        
         // Handle frame ID assignment
         if (data.MessageFrameID) {
+          console.log("TicketWise: Got frameID:", data.MessageFrameID);
+          frameIdRef.current = data.MessageFrameID;
           setFrameId(data.MessageFrameID);
           setIsReady(true);
           onReady?.();
@@ -102,8 +112,10 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
         
         // Handle auth response
         if (data.response === "getmemberauthentication" && data.data) {
+          console.log("TicketWise: Got auth response:", data.data);
           const parsed = MemberAuthSchema.safeParse(data.data);
           if (parsed.success) {
+            console.log("TicketWise: Auth parsed successfully");
             setAuth(parsed.data);
             onAuth?.(parsed.data);
           } else {
