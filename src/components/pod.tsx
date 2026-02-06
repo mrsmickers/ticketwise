@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useHostedApi, type MemberAuth } from "@/hooks/use-hosted-api";
-import { setAuthCookies } from "@/actions/auth";
+import { setAuthCookies, checkAuth } from "@/actions/auth";
 import { Chat } from "./chat";
 
 interface PodProps {
@@ -14,6 +14,16 @@ export function Pod({ ticketId: propTicketId, screen: propScreen }: PodProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  
+  // Check for existing auth cookies on mount (CW sets these automatically)
+  useEffect(() => {
+    checkAuth().then(({ authenticated, memberId }) => {
+      if (authenticated) {
+        console.log("TicketWise: Already authenticated via cookies, memberId:", memberId);
+        setIsAuthenticated(true);
+      }
+    });
+  }, []);
   
   const handleAuth = useCallback(async (auth: MemberAuth) => {
     try {
@@ -27,7 +37,7 @@ export function Pod({ ticketId: propTicketId, screen: propScreen }: PodProps) {
   }, []);
 
   const handleReady = useCallback(() => {
-    console.log("TicketWise: Pod ready, requesting authentication");
+    console.log("TicketWise: Pod ready, checking authentication...");
   }, []);
 
   const handleError = useCallback((error: Error) => {
@@ -52,17 +62,18 @@ export function Pod({ ticketId: propTicketId, screen: propScreen }: PodProps) {
     }
   }, []);
 
-  // Request auth and screen object when ready
+  // Request auth (if not already authenticated) and screen object when ready
   useEffect(() => {
     if (isReady) {
-      if (!auth) {
+      // Only request auth via postMessage if we don't have cookies
+      if (!auth && !isAuthenticated) {
         requestAuth();
       }
       if (!screenObject) {
         requestScreenObject();
       }
     }
-  }, [isReady, auth, screenObject, requestAuth, requestScreenObject]);
+  }, [isReady, auth, isAuthenticated, screenObject, requestAuth, requestScreenObject]);
 
   // Standalone mode - show login prompt
   if (isStandalone) {
