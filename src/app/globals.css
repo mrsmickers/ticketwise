@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+:root {
+  /* Ingenio Technologies Brand Colors */
+  --color-navy: #222E40;
+  --color-yellow: #DEDC00;
+  --color-orange: #F8AB08;
+  --color-purple: #824192;
+  --color-white: #FFFFFF;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-manrope), system-ui, -apple-system, sans-serif;
+  background: var(--color-white);
+  color: var(--color-navy);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Simple prose styling for AI responses */
+.prose {
+  line-height: 1.5;
+}
+
+.prose h1, .prose h2, .prose h3 {
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+.prose h1 { font-size: 1.25em; }
+.prose h2 { font-size: 1.1em; }
+.prose h3 { font-size: 1em; }
+
+.prose p {
+  margin-bottom: 0.75em;
+}
+
+.prose ul, .prose ol {
+  margin-left: 1.25em;
+  margin-bottom: 0.75em;
+}
+
+.prose li {
+  margin-bottom: 0.25em;
+}
+
+.prose code {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0.125em 0.25em;
+  border-radius: 0.25em;
+  font-size: 0.9em;
+}
+
+.prose pre {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0.75em;
+  border-radius: 0.375em;
+  overflow-x: auto;
+  margin-bottom: 0.75em;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+}
+
+.prose strong {
+  font-weight: 600;
+}
+
+.prose a {
+  color: var(--color-navy);
+  text-decoration: underline;
+}
+
+.prose blockquote {
+  border-left: 3px solid #e5e7eb;
+  padding-left: 1em;
+  margin-left: 0;
+  font-style: italic;
+  color: #6b7280;
+}

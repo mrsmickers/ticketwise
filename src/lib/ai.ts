@@ -1,0 +1,184 @@
+import OpenAI from "openai";
+import { env } from "./env";
+
+const openai = new OpenAI({
+  apiKey: env.OPENAI_API_KEY,
+});
+
+// ============ System Prompts ============
+
+const SYSTEM_PROMPT = `You are TicketWise, an AI assistant for IT service desk technicians using ConnectWise PSA.
+
+Your role is to help technicians work more efficiently by:
+- Summarising tickets clearly and concisely
+- Suggesting troubleshooting steps and solutions
+- Identifying patterns from similar past tickets
+- Highlighting important details they might miss
+- Recommending next actions
+
+Guidelines:
+- Be concise but thorough. Technicians are busy.
+- Use bullet points and clear structure.
+- When suggesting solutions, prioritise quick wins first.
+- If you're unsure, say so. Don't make up solutions.
+- Reference specific details from the ticket when relevant.
+- Consider the company's history if similar tickets are provided.
+
+Format your responses in Markdown for readability.`;
+
+// ============ Slash Command Prompts ============
+
+export const SLASH_COMMANDS: Record<string, { description: string; prompt: string }> = {
+  "/summary": {
+    description: "Summarise this ticket",
+    prompt: "Provide a clear, concise summary of this ticket. Include: the core issue, what's been tried, current status, and any blockers.",
+  },
+  "/suggest": {
+    description: "Suggest troubleshooting steps",
+    prompt: "Based on this ticket, suggest the most likely troubleshooting steps to resolve the issue. Prioritise quick wins and common solutions first. Consider what's already been tried.",
+  },
+  "/next": {
+    description: "Recommend next steps",
+    prompt: "What should the technician do next with this ticket? Consider: urgency, what's pending, who needs to be contacted, and any escalation needs.",
+  },
+  "/similar": {
+    description: "Analyse similar tickets for patterns",
+    prompt: "Analyse the similar tickets provided. Look for: common causes, successful resolutions, recurring patterns, and any relevant knowledge that could help resolve the current ticket.",
+  },
+  "/config": {
+    description: "Analyse configuration history",
+    prompt: "Analyse the ticket history for this configuration/device. Look for: recurring issues, patterns, previous solutions that worked, and any underlying problems that might need addressing.",
+  },
+  "/draft": {
+    description: "Draft a customer response",
+    prompt: "Draft a professional, friendly response to send to the customer. Acknowledge their issue, explain what's being done or next steps, and set appropriate expectations.",
+  },
+  "/escalate": {
+    description: "Prepare escalation notes",
+    prompt: "Prepare concise escalation notes for this ticket. Include: issue summary, what's been tried, current findings, and specific questions for the escalation team.",
+  },
+};
+
+// ============ Chat Functions ============
+
+export interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface ChatOptions {
+  ticketContext: string;
+  similarTickets?: string;
+  configHistory?: string;
+  slashCommand?: string;
+}
+
+export async function chat(
+  messages: ChatMessage[],
+  options: ChatOptions
+): Promise<string> {
+  // Build context message
+  let contextMessage = `# Current Ticket\n\n${options.ticketContext}`;
+  
+  if (options.similarTickets) {
+    contextMessage += `\n\n# Similar Tickets\n\n${options.similarTickets}`;
+  }
+  
+  if (options.configHistory) {
+    contextMessage += `\n\n# Configuration History\n\n${options.configHistory}`;
+  }
+
+  // Build messages array
+  const apiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: contextMessage },
+  ];
+
+  // Add conversation history
+  for (const msg of messages) {
+    // If there's a slash command, inject its prompt
+    if (msg.role === "user" && options.slashCommand && msg === messages[messages.length - 1]) {
+      const command = SLASH_COMMANDS[options.slashCommand];
+      if (command) {
+        apiMessages.push({
+          role: "user",
+          content: `${command.prompt}\n\nUser query: ${msg.content || "(no additional context)"}`,
+        });
+        continue;
+      }
+    }
+    
+    apiMessages.push({
+      role: msg.role,
+      content: msg.content,
+    });
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: env.OPENAI_MODEL,
+    messages: apiMessages,
+    temperature: 0.7,
+    max_tokens: 2000,
+  });
+
+  return completion.choices[0]?.message?.content || "I couldn't generate a response. Please try again.";
+}
+
+/**
+ * Stream chat response for real-time display.
+ */
+export async function* chatStream(
+  messages: ChatMessage[],
+  options: ChatOptions
+): AsyncGenerator<string> {
+  // Build context message
+  let contextMessage = `# Current Ticket\n\n${options.ticketContext}`;
+  
+  if (options.similarTickets) {
+    contextMessage += `\n\n# Similar Tickets\n\n${options.similarTickets}`;
+  }
+  
+  if (options.configHistory) {
+    contextMessage += `\n\n# Configuration History\n\n${options.configHistory}`;
+  }
+
+  // Build messages array
+  const apiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: contextMessage },
+  ];
+
+  // Add conversation history
+  for (const msg of messages) {
+    if (msg.role === "user" && options.slashCommand && msg === messages[messages.length - 1]) {
+      const command = SLASH_COMMANDS[options.slashCommand];
+      if (command) {
+        apiMessages.push({
+          role: "user",
+          content: `${command.prompt}\n\nUser query: ${msg.content || "(no additional context)"}`,
+        });
+        continue;
+      }
+    }
+    
+    apiMessages.push({
+      role: msg.role,
+      content: msg.content,
+    });
+  }
+
+  const stream = await openai.chat.completions.create({
+    model: env.OPENAI_MODEL,
+    messages: apiMessages,
+    temperature: 0.7,
+    max_tokens: 2000,
+    stream: true,
+  });
+
+  for await (const chunk of stream) {
+    const content = chunk.choices[0]?.delta?.content;
+    if (content) {
+      yield content;
+    }
+  }
+}
