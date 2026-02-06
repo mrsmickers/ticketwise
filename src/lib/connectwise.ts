@@ -2,8 +2,8 @@ import { cookies } from "next/headers";
 import { env } from "./env";
 
 /**
- * ConnectWise API client that uses the user's session cookies
- * for authentication - inherits their permissions automatically.
+ * ConnectWise API client that uses API key authentication
+ * with member impersonation based on the logged-in user's cookies.
  */
 
 type CWRequestOptions = {
@@ -39,12 +39,29 @@ function buildUrl(endpoint: string, options?: CWRequestOptions): string {
 
 async function getHeaders(): Promise<HeadersInit> {
   const cookieStore = await cookies();
-  return {
+  
+  // Get the logged-in member's ID for impersonation
+  const memberId = cookieStore.get("memberId")?.value;
+  
+  // Build Basic auth from API credentials
+  // Format: companyId+publicKey:privateKey
+  const authString = `${env.CW_COMPANY_ID}+${env.CW_PUBLIC_KEY}:${env.CW_PRIVATE_KEY}`;
+  const basicAuth = Buffer.from(authString).toString("base64");
+  
+  const headers: HeadersInit = {
+    "Authorization": `Basic ${basicAuth}`,
     "clientId": env.CW_CLIENT_ID,
-    "Cookie": cookieStore.toString(),
     "Content-Type": "application/json",
     "Accept": "application/json",
   };
+  
+  // Add member impersonation header if we have a logged-in member
+  if (memberId) {
+    headers["x-cw-usertype"] = "member";
+    headers["x-cw-memberhash"] = memberId;
+  }
+  
+  return headers;
 }
 
 export async function cwGet<T>(endpoint: string, options?: CWRequestOptions): Promise<T> {
