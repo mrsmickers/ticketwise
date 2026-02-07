@@ -8,27 +8,25 @@
 
 ## Executive Summary
 
-Overall security posture is **GOOD** for an internal tool. The critical postMessage vulnerability has been remediated.
+Overall security posture is **GOOD**. All high and medium priority findings have been remediated.
 
 | Severity | Count |
 |----------|-------|
 | 🔴 Critical | 0 |
 | 🟠 High | 0 ✅ (was 1) |
-| 🟡 Medium | 2 ✅ (was 3) |
+| 🟡 Medium | 0 ✅ (was 3) |
 | 🔵 Low | 4 |
 | ℹ️ Info | 3 |
 
 ---
 
-## Findings
+## Resolved Findings
 
 ### ✅ RESOLVED: PostMessage Origin Validation
 
-**Location:** `src/hooks/use-hosted-api.ts`
-
 **Status:** FIXED (2026-02-07)
 
-Origin validation is now implemented:
+Origin validation implemented in `src/hooks/use-hosted-api.ts`:
 ```javascript
 const ALLOWED_ORIGINS = [
   "https://eu.myconnectwise.net",
@@ -36,14 +34,24 @@ const ALLOWED_ORIGINS = [
   "https://au.myconnectwise.net",
   "https://staging.connectwisedev.com",
 ];
-
-// Messages from unknown origins are rejected
-if (!ALLOWED_ORIGINS.some(origin => event.origin.startsWith(origin))) {
-  return;
-}
 ```
 
-Responses are sent to the verified parent origin, not `"*"`.
+---
+
+### ✅ RESOLVED: Security Headers
+
+**Status:** FIXED
+
+All security headers implemented in `src/middleware.ts`:
+
+| Header | Status |
+|--------|--------|
+| `X-Content-Type-Options: nosniff` | ✅ |
+| `X-XSS-Protection: 1; mode=block` | ✅ |
+| `Referrer-Policy: strict-origin-when-cross-origin` | ✅ |
+| `Permissions-Policy: camera=(), microphone=(), geolocation=()` | ✅ |
+| `Content-Security-Policy: frame-ancestors *` | ✅ |
+| HSTS | ✅ (Cloudflare) |
 
 ---
 
@@ -55,107 +63,57 @@ Minimum TLS version set to 1.2 across all Cloudflare zones.
 
 ---
 
-### 🟡 MEDIUM: Missing Security Headers
-
-**Issue:** Several recommended security headers are not present:
-
-| Header | Status | Recommendation |
-|--------|--------|----------------|
-| `X-Content-Type-Options` | ❌ Missing | Add `nosniff` |
-| `X-XSS-Protection` | ❌ Missing | Add `1; mode=block` (legacy browsers) |
-| `Strict-Transport-Security` | ✅ Fixed | HSTS enabled via Cloudflare |
-| `Referrer-Policy` | ❌ Missing | Add `strict-origin-when-cross-origin` |
-| `Permissions-Policy` | ❌ Missing | Restrict unnecessary browser features |
-
-**Note:** `X-Frame-Options` is intentionally omitted to allow iframe embedding.
-
----
-
-### 🟡 MEDIUM: Rate Limiting
+### ✅ RESOLVED: Rate Limiting
 
 **Status:** IMPLEMENTED
 
-Rate limiting is now implemented at 30 requests per minute per member.
+Rate limiting: 30 requests per minute per member.
 
 ---
 
+## Remaining Low Priority Findings
+
 ### 🔵 LOW: Cookie Security - SameSite=None
 
-**Location:** `src/actions/auth.ts`
-
-**Issue:** Cookies are set with `sameSite: "none"` which is required for cross-site iframe usage.
-
-**Mitigation:** The `httpOnly: true` and `secure: true` flags are correctly set. `SameSite=None` is necessary for the pod to work in the CW iframe.
+Cookies use `sameSite: "none"` which is required for cross-site iframe usage. Mitigated by `httpOnly: true` and `secure: true`.
 
 ---
 
 ### 🔵 LOW: No CSRF Protection
 
-**Issue:** No CSRF tokens implemented.
-
-**Mitigation:** Since this is a pod that only functions within ConnectWise (standalone access is blocked), and cookies require the CW context to be set, the risk is reduced.
+No CSRF tokens implemented. Low risk since standalone access is blocked and cookies require CW context.
 
 ---
 
 ### 🔵 LOW: Technology Stack Disclosure
 
-**Issue:** The 404 page reveals Next.js framework usage.
-
-**Risk:** Minimal - attackers could identify the framework, but this is low-value information.
+404 page reveals Next.js framework. Minimal risk.
 
 ---
 
 ### 🔵 LOW: API Key Permissions Too Broad
 
-**Issue:** The ConnectWise API key has read access to more areas than needed.
-
-**Recommendation:** Create a dedicated API member with minimal permissions:
-- Service Tickets: Read
-- Configurations: Read
-
----
-
-### ℹ️ INFO: Standalone Access Blocked (Good!)
-
-The application correctly detects standalone access and blocks usage.
-
----
-
-### ℹ️ INFO: No Sensitive Data in JS Bundles
-
-Scanned all JavaScript bundles for API keys, secrets, tokens - none found.
-
----
-
-### ℹ️ INFO: Health Endpoint Minimal Disclosure
-
-The `/api/health` endpoint returns minimal, non-sensitive information.
-
----
-
-## Recommendations Priority
-
-1. ~~**Immediate:** Implement postMessage origin validation~~ ✅ DONE
-2. **Short-term:** Add security headers via middleware
-3. ~~**Short-term:** Set Cloudflare minimum TLS to 1.2~~ ✅ DONE
-4. ~~**Medium-term:** Implement rate limiting~~ ✅ DONE
-5. **Medium-term:** Create restricted CW API member
-6. **Nice-to-have:** Add CSRF tokens
+**Recommendation:** Create a dedicated API member with minimal permissions (Service Tickets: Read, Configurations: Read).
 
 ---
 
 ## Cloudflare Security (Updated 2026-02-07)
 
-The following Cloudflare settings have been applied to ingeniotech.co.uk:
+Applied to ingeniotech.co.uk:
 
 - ✅ Minimum TLS 1.2
 - ✅ HSTS enabled (6 months, includeSubDomains)
 - ✅ Always Use HTTPS
 - ✅ SSL Mode: Full
-- ✅ Bot Fight Mode (pending - dashboard only)
-- ⏳ DNSSEC (pending - requires registrar update)
+- ⏳ Bot Fight Mode (dashboard only)
+- ⏳ DNSSEC (requires registrar update)
 
 ---
 
-*Report generated by automated security assessment*
+## Summary
+
+All HIGH and MEDIUM findings have been resolved. Remaining items are low priority hardening measures.
+
+---
+
 *Last updated: 2026-02-07 by Stavros*
