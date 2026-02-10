@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Output standalone for Docker (Nixpacks requires this)
+  output: "standalone",
   
   // Allow embedding in ConnectWise iframe
   async headers() {
