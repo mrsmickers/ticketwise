@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Output standalone for Docker
-  output: "standalone",
   
   // Allow embedding in ConnectWise iframe
   async headers() {
