@@ -36,6 +36,15 @@ The warning is cosmetic. Leave it alone.
 - If users see "Connecting to ConnectWise..." stuck, first try: **hard refresh (Ctrl+Shift+R)**
 - Stale deployments cause "Failed to find Server Action" errors — the cached client JS references old build hashes
 
+## ConnectWise Hosted API Protocol
+- CW's official library: `ConnectWiseHostedAPI.1.0.js` (source: github.com/pv-ajay-thota/cw-manage-hosted-api)
+- All outgoing postMessages MUST be `JSON.stringify`'d (CW sends strings, expects strings)
+- Auth/screen requests use `hosted_request` key, NOT `request` (CW's lib renames it in `post()`)
+- CW silently ignores messages with `request` instead of `hosted_request`
+- Event acknowledgments: `{event, _id, result: "success", frameID}`
+- Ready message: `{message: "ready"}` — sent to `*` on load
+- X-Frame-Options MUST be overridden (Next.js 15 defaults to SAMEORIGIN, blocks CW iframe)
+
 ## Deployment Checklist
 1. Push to `main` branch
 2. Trigger restart via Coolify API or UI
