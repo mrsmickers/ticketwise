@@ -77,8 +77,15 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     const payload = { ...message, frameID: frameIdRef.current };
     // Send to verified parent origin, or "*" for initial ready message
     const targetOrigin = parentOriginRef.current || "*";
-    console.log("[TicketWise] postMessage TO parent:", JSON.stringify(payload), "targetOrigin:", targetOrigin);
-    window.parent.postMessage(payload, targetOrigin);
+    // CW Hosted API expects: hosted_request (not request), and JSON.stringify'd
+    const cwPayload = { ...payload };
+    if ('request' in cwPayload) {
+      (cwPayload as any).hosted_request = (cwPayload as any).request;
+      delete (cwPayload as any).request;
+    }
+    const payloadStr = JSON.stringify(cwPayload);
+    console.log("[TicketWise] postMessage TO parent:", payloadStr, "targetOrigin:", targetOrigin);
+    window.parent.postMessage(payloadStr, targetOrigin);
   }, []);
 
   // Request member authentication from CW
@@ -186,13 +193,13 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
             }
           }
           
-          // Acknowledge the event (include frameID)
-          window.parent.postMessage({
+          // Acknowledge the event (include frameID) — stringify per CW API
+          window.parent.postMessage(JSON.stringify({
             event: data.event,
             _id: data._id,
             result: "success",
             frameID: frameIdRef.current,
-          }, parentOriginRef.current || "*");
+          }), parentOriginRef.current || "*");
           return;
         }
       } catch (e) {
@@ -206,7 +213,7 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     // Send ready message to parent
     if (window !== window.parent) {
       console.log("[TicketWise] Sending ready message to parent. window.parent:", window.parent !== window);
-      window.parent.postMessage({ message: "ready" }, "*");
+      window.parent.postMessage(JSON.stringify({ message: "ready" }), "*");
     } else {
       console.log("[TicketWise] Running standalone (no parent frame)");
     }
