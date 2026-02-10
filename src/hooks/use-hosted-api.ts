@@ -77,10 +77,8 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     const payload = { ...message, frameID: frameIdRef.current };
     // Send to verified parent origin, or "*" for initial ready message
     const targetOrigin = parentOriginRef.current || "*";
-    // CW sends JSON strings, so we send JSON strings back
-    const payloadStr = JSON.stringify(payload);
-    console.log("[TicketWise] postMessage TO parent:", payloadStr, "targetOrigin:", targetOrigin);
-    window.parent.postMessage(payloadStr, targetOrigin);
+    console.log("[TicketWise] postMessage TO parent:", JSON.stringify(payload), "targetOrigin:", targetOrigin);
+    window.parent.postMessage(payload, targetOrigin);
   }, []);
 
   // Request member authentication from CW
@@ -188,13 +186,13 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
             }
           }
           
-          // Acknowledge the event (include frameID) — stringify for CW
-          window.parent.postMessage(JSON.stringify({
+          // Acknowledge the event (include frameID)
+          window.parent.postMessage({
             event: data.event,
             _id: data._id,
             result: "success",
             frameID: frameIdRef.current,
-          }), parentOriginRef.current || "*");
+          }, parentOriginRef.current || "*");
           return;
         }
       } catch (e) {
@@ -208,7 +206,7 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     // Send ready message to parent
     if (window !== window.parent) {
       console.log("[TicketWise] Sending ready message to parent. window.parent:", window.parent !== window);
-      window.parent.postMessage(JSON.stringify({ message: "ready" }), "*");
+      window.parent.postMessage({ message: "ready" }, "*");
     } else {
       console.log("[TicketWise] Running standalone (no parent frame)");
     }
