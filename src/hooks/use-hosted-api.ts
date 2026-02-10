@@ -77,12 +77,13 @@ export function useHostedApi(options: UseHostedApiOptions = {}): UseHostedApiRet
     const payload = { ...message, frameID: frameIdRef.current };
     // Send to verified parent origin, or "*" for initial ready message
     const targetOrigin = parentOriginRef.current || "*";
+    console.log("[TicketWise] postMessage TO parent:", JSON.stringify(payload), "targetOrigin:", targetOrigin);
     window.parent.postMessage(payload, targetOrigin);
   }, []);
 
   // Request member authentication from CW
   const requestAuth = useCallback(() => {
-    // Per CW docs: use "request" not "hosted_request"
+    console.log("[TicketWise] Requesting auth from CW parent, frameId:", frameIdRef.current);
     postToParent({ request: "getMemberAuthentication" });
   }, [postToParent]);
 
