@@ -10,8 +10,12 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          // Explicitly unset X-Frame-Options (Next.js may add sameorigin by default)
-          // CSP frame-ancestors supersedes X-Frame-Options
+          // Remove X-Frame-Options to allow iframe embedding in ConnectWise
+          {
+            key: "X-Frame-Options",
+            value: "ALLOWALL",
+          },
+          // CSP frame-ancestors as the modern replacement
           {
             key: "Content-Security-Policy",
             value: "frame-ancestors *",
